@@ -1,0 +1,6 @@
+@PropertyOwnerLookup.Api_HostAddress = https://localhost:7225
+
+GET {{PropertyOwnerLookup.Api_HostAddress}}/api/health/
+Accept: application/json
+
+###
