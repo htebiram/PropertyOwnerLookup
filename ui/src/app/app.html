@@ -1,0 +1,172 @@
+<main>
+  <header class="hero">
+    <div class="mark" aria-hidden="true">FL</div>
+    <div>
+      <p class="eyebrow">Florida public records</p>
+      <h1>Property Owner Lookup</h1>
+      <p class="subtitle">Search Florida public property records by address.</p>
+    </div>
+  </header>
+
+  <section class="health-panel" aria-labelledby="health-title">
+    <div>
+      <h2 id="health-title">API Health Status</h2>
+      <p>Check if the backend API is running.</p>
+    </div>
+    <button type="button" (click)="checkHealth()" [disabled]="isHealthLoading()">
+      @if (isHealthLoading()) {
+        <span class="spinner" aria-hidden="true"></span> Checking...
+      } @else {
+        Check Health
+      }
+    </button>
+  </section>
+
+  @if (hasHealthCheckResult()) {
+    <section class="health-result" [class.error]="healthError()" [attr.role]="healthError() ? 'alert' : 'status'">
+      <span class="state-icon">{{ healthError() ? '!' : '✓' }}</span>
+      <div class="health-result-content">
+        @if (healthResult(); as health) {
+          <h2>API is Healthy</h2>
+          <p>The backend API is running successfully.</p>
+          <dl class="health-details">
+            <div><dt>Status</dt><dd>{{ health.status }}</dd></div>
+            <div><dt>Service</dt><dd>{{ health.service }}</dd></div>
+          </dl>
+        } @else {
+          <h2>API is unavailable</h2>
+          <p>Unable to reach the backend API. Please try again.</p>
+        }
+        @if (lastHealthCheckTime(); as checkedAt) {
+          <p class="last-checked">Last checked: {{ checkedAt | date: 'medium' }}</p>
+        }
+      </div>
+    </section>
+  }
+
+  <section class="search-panel" aria-label="Property search">
+    <h2>Search Florida Property</h2>
+    <form [formGroup]="searchForm" (ngSubmit)="search()" novalidate>
+      <label for="address">Florida property address</label>
+      <div class="search-row">
+        <input
+          id="address"
+          type="search"
+          formControlName="address"
+          (keydown.enter)="search(); $event.preventDefault()"
+          placeholder="5318 Garden Hills Cir, West Palm Beach, FL 33415"
+          autocomplete="street-address"
+        />
+        <button type="submit" [disabled]="loading()">
+          @if (loading()) {
+            <span class="spinner" aria-hidden="true"></span> Searching
+          } @else {
+            Search
+          }
+        </button>
+      </div>
+      @if (address.invalid && address.touched) {
+        <p class="validation" role="alert">Enter a property address to search.</p>
+      }
+      <p class="hint">Searches local public-record imports; development samples are clearly labeled.</p>
+    </form>
+  </section>
+
+  @if (status() === 'not-found') {
+    <section class="state-card" role="status">
+      <span class="state-icon">?</span>
+      <div>
+        <h2>No matching public property record was found</h2>
+        <p>
+          The address may not match the current tax roll, or the record may not be available in the public dataset.
+        </p>
+      </div>
+    </section>
+  } @else if (status() === 'error') {
+    <section class="state-card error" role="alert">
+      <span class="state-icon">!</span>
+      <div>
+        <h2>We couldn’t complete the search</h2>
+        <p>The property service is unavailable right now. Please try again.</p>
+      </div>
+    </section>
+  }
+
+  @if (result(); as property) {
+    <article class="result-card">
+      <div class="result-heading">
+        <div>
+          <p class="eyebrow">Search result</p>
+          <h2>{{ property.property.address }}</h2>
+          <p>{{ property.property.city }}, {{ property.property.state }} {{ property.property.zipCode }}</p>
+        </div>
+        @if (property.dataSource.isSampleData) {
+          <span class="badge">Sample data</span>
+        }
+      </div>
+
+      <div class="details-grid">
+        <section>
+          <h3>Property</h3>
+          <dl>
+            <div>
+              <dt>County</dt>
+              <dd>{{ property.county.name }}</dd>
+            </div>
+            <div>
+              <dt>Parcel ID</dt>
+              <dd>{{ property.parcelNumber }}</dd>
+            </div>
+            @if (property.property.dorUseCode) { <div><dt>Property use</dt><dd>{{ property.property.dorUseCode }}</dd></div> }
+            @if (property.property.actualYearBuilt) { <div><dt>Year built</dt><dd>{{ property.property.actualYearBuilt }}</dd></div> }
+            @if (property.property.livingArea) { <div><dt>Living area</dt><dd>{{ property.property.livingArea | number }} sq ft</dd></div> }
+            @if (property.property.landSquareFeet) { <div><dt>Land area</dt><dd>{{ property.property.landSquareFeet | number }} sq ft</dd></div> }
+          </dl>
+        </section>
+        <section>
+          <h3>Owner</h3>
+          <dl>
+            <div>
+              <dt>Name</dt>
+              <dd>{{ property.owner.name }}</dd>
+            </div>
+            <div>
+              <dt>Mailing address</dt>
+              <dd>{{ property.owner.mailingAddress }}</dd>
+            </div>
+          </dl>
+        </section>
+        @if (property.valuation.justValue !== null || property.valuation.assessedValueSchoolDistrict !== null || property.valuation.landValue !== null) {
+          <section>
+            <h3>Valuation</h3>
+            <dl>
+              @if (property.valuation.justValue !== null) {
+                <div>
+                  <dt>Just value</dt>
+                  <dd>{{ property.valuation.justValue | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+                </div>
+              }
+              @if (property.valuation.assessedValueSchoolDistrict !== null) {
+                <div>
+                  <dt>Assessed value</dt>
+                  <dd>{{ property.valuation.assessedValueSchoolDistrict | currency: 'USD' : 'symbol' : '1.0-0' }}</dd>
+                </div>
+              }
+              @if (property.valuation.landValue !== null) { <div><dt>Land value</dt><dd>{{ property.valuation.landValue | currency: 'USD' : 'symbol' : '1.0-0' }}</dd></div> }
+            </dl>
+          </section>
+        }
+        @if (property.sales.length > 0) {
+          <section><h3>Latest sale</h3><dl>
+            @if (property.sales[0].saleYear) { <div><dt>Sale date</dt><dd>{{ property.sales[0].saleMonth || '' }}{{ property.sales[0].saleMonth ? '/' : '' }}{{ property.sales[0].saleYear }}</dd></div> }
+            @if (property.sales[0].salePrice !== null) { <div><dt>Sale price</dt><dd>{{ property.sales[0].salePrice | currency: 'USD' : 'symbol' : '1.0-0' }}</dd></div> }
+          </dl></section>
+        }
+      </div>
+      <footer>
+        <span>Data source</span><strong>{{ property.dataSource.name }}</strong>
+        @if (property.dataSource.assessmentYear) { <span>Assessment year {{ property.dataSource.assessmentYear }}</span> }
+      </footer>
+    </article>
+  }
+</main>

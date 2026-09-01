@@ -2,10 +2,8 @@ using System.Reflection;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
 builder.Services.AddOpenApi(options =>
 {
     options.AddDocumentTransformer((document, _, _) =>
@@ -18,19 +16,37 @@ builder.Services.AddOpenApi(options =>
         return Task.CompletedTask;
     });
  });
+const string CorsPolicyName = "AppCorsPolicy";
+
+// Fetch origins from configuration 
+var rawOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+if (rawOrigins.Length == 0)
+{
+    throw new InvalidOperationException
+        ("CORS configuration failure: 'Cors:AllowedOrigins' must contain at least one valid origin.");
+}
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(CorsPolicyName, policy =>
+    {
+        policy.WithOrigins(rawOrigins)
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .SetPreflightMaxAge(TimeSpan.FromMinutes(10));    
+    });
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
+app.UseCors(CorsPolicyName); 
 
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapOpenApi();
 
 app.Run();
